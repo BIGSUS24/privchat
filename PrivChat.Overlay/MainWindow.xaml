@@ -1,0 +1,93 @@
+﻿<Window x:Class="PrivChat.Overlay.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="PrivChat Overlay"
+        Width="360"
+        Height="500"
+        MinWidth="320"
+        MinHeight="360"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        Opacity="0.96"
+        Background="#202824">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PanelBrush" Color="#202824" />
+        <SolidColorBrush x:Key="LineBrush" Color="#405149" />
+        <SolidColorBrush x:Key="TextBrush" Color="#F2F8F5" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#A8B8B1" />
+        <SolidColorBrush x:Key="InboundBrush" Color="#314038" />
+        <SolidColorBrush x:Key="OutboundBrush" Color="#0B7F68" />
+        <Style x:Key="BubbleBorderStyle" TargetType="Border">
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="MaxWidth" Value="270" />
+            <Setter Property="Margin" Value="0,4,44,4" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{StaticResource InboundBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Sender}" Value="pc">
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+                    <Setter Property="Margin" Value="44,4,0,4" />
+                    <Setter Property="Background" Value="{StaticResource OutboundBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="8">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Padding="14,12" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="PrivChat" Foreground="{StaticResource TextBrush}" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock x:Name="PairText" Text="Starting local relay" Foreground="{StaticResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                    </StackPanel>
+                    <Ellipse x:Name="StatusDot" Grid.Column="1" Width="10" Height="10" Fill="#9BA8A1" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <ScrollViewer x:Name="MessageScroll" Grid.Row="1" Padding="12" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Messages}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource BubbleBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Body}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding TimeText}" Foreground="#C8D6D0" FontSize="10" HorizontalAlignment="Right" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <Border Grid.Row="2" Padding="10" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="42" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="MessageBox" MinHeight="38" MaxLength="4000" VerticalContentAlignment="Center" Padding="12,0" KeyDown="MessageBox_KeyDown" Background="#F4F7F5" Foreground="#111815" BorderThickness="0" />
+                    <Button Grid.Column="2" Content=">" Click="Send_Click" FontSize="18" FontWeight="Bold" Background="#0B7F68" Foreground="White" BorderThickness="0" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

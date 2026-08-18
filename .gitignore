@@ -1,0 +1,8 @@
+bin/
+obj/
+publish/
+[Dd]ebug/
+[Rr]elease/
+*.user
+.vs/
+*.log

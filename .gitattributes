@@ -1,0 +1,5 @@
+* text=auto
+
+# Batch files break if checked out with LF endings.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
