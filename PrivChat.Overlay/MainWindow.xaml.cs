@@ -250,19 +250,23 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ChatTab_Click(object sender, RoutedEventArgs e) => ShowTab(chat: true);
+    private void ChatTab_Click(object sender, RoutedEventArgs e) => ShowTab(0);
 
-    private void AiTab_Click(object sender, RoutedEventArgs e) => ShowTab(chat: false);
+    private void AiTab_Click(object sender, RoutedEventArgs e) => ShowTab(1);
 
-    private void ShowTab(bool chat)
+    private void LlmTab_Click(object sender, RoutedEventArgs e) => ShowTab(2);
+
+    private void ShowTab(int tab)
     {
         var active = new SolidColorBrush(Color.FromRgb(11, 127, 104));
         var inactive = new SolidColorBrush(Color.FromRgb(42, 54, 48));
-        ChatTabButton.Background = chat ? active : inactive;
-        AiTabButton.Background = chat ? inactive : active;
-        MessageScroll.Visibility = chat ? Visibility.Visible : Visibility.Collapsed;
-        ChatInputBar.Visibility = chat ? Visibility.Visible : Visibility.Collapsed;
-        AiSection.Visibility = chat ? Visibility.Collapsed : Visibility.Visible;
+        ChatTabButton.Background = tab == 0 ? active : inactive;
+        AiTabButton.Background = tab == 1 ? active : inactive;
+        LlmTabButton.Background = tab == 2 ? active : inactive;
+        MessageScroll.Visibility = tab == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ChatInputBar.Visibility = tab == 0 ? Visibility.Visible : Visibility.Collapsed;
+        AiSection.Visibility = tab == 1 ? Visibility.Visible : Visibility.Collapsed;
+        LlmSection.Visibility = tab == 2 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SetConnected(bool connected)

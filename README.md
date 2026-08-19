@@ -108,12 +108,16 @@ Roles are asymmetric on purpose: the `overlay` role is accepted only from loopba
 
 ## AI assist (optional)
 
-The overlay header has a **Chat | AI** toggle. The AI tab asks Gemini questions — with or without a screenshot of your screen — and lives entirely inside the capture-protected window.
+The overlay header has a **Chat | AI | LLM** toggle. The AI tab asks Gemini questions — with or without a screenshot of your screen — and lives entirely inside the capture-protected window. The LLM tab does the same through a fully local model (see below).
 
 - **Setup**: the first time you open the AI tab it asks for a Gemini API key ([free from Google AI Studio](https://aistudio.google.com/apikey)). The key is stored at `%LOCALAPPDATA%\PrivChat\ai-config.json` on your PC only; a `GEMINI_API_KEY` environment variable also works. The model defaults to `gemini-2.5-flash` and can be changed in the same place.
 - **Ask about your screen**: press the 📷 button. The overlay hides for a frame, captures the entire virtual desktop (all monitors) as a JPEG, then comes back without stealing focus. Type your prompt, press Enter, and the image plus prompt are sent to Gemini. Follow-up questions keep the latest screenshot until you take a new one.
 - **The overlay never appears in its own screenshots.** GDI `CopyFromScreen` does not reliably honor `WDA_EXCLUDEFROMCAPTURE`, so the capture path hides this window first. Gemini sees your work, never the private chat or pairing code.
 - **Privacy boundaries**: screenshots and prompts leave the machine to Google over HTTPS — that is the point of the feature, and the only outbound connection PrivChat ever makes. The AI conversation is overlay-only: it is never relayed to the phone, never enters the 200-message history, lives in RAM, and dies with the process. Screenshots are downscaled to at most 1920 px wide, encoded as JPEG, and never written to disk.
+
+### Local LLM tab (zero setup)
+
+A third **LLM** tab routes the same ask-anything / screenshot flow to a local [llama.cpp](https://github.com/ggml-org/llama.cpp) server — the `START HERE.bat` Qwen3-VL setup — on `http://127.0.0.1:1234`. It speaks the OpenAI-compatible API, needs **no API key**, and **nothing leaves the machine**: no outbound connection is made at all, which is why the tab's subtitle says so. It works with zero configuration; the endpoint can be changed with the ✎ server button and is stored at `%LOCALAPPDATA%\PrivChat\llm-config.json`. Screenshots are downscaled to 1024 px before sending because the local vision encoder prices images in tokens, and conversation history is text-only and capped short to fit the small context. If the server is not running you get a plain inline hint to start it.
 
 ---
 

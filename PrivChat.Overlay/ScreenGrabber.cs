@@ -22,8 +22,12 @@ internal static class ScreenGrabber
 
     // CopyFromScreen/BitBlt does not reliably honor WDA_EXCLUDEFROMCAPTURE, so the
     // overlay is hidden for one DWM frame, captured, then restored without activating.
-    // That keeps the pairing code and chat off the image sent to Gemini.
-    public static byte[] CaptureVirtualScreenJpeg(IntPtr hideHwnd)
+    // That keeps the pairing code and chat off the image sent to the model.
+    public static byte[] CaptureVirtualScreenJpeg(IntPtr hideHwnd) => CaptureVirtualScreenJpeg(hideHwnd, MaxWidth);
+
+    // Local vision models price an image in tokens and encode on the CPU, so callers
+    // targeting them pass a smaller budget (the local LLM tab uses 1024).
+    public static byte[] CaptureVirtualScreenJpeg(IntPtr hideHwnd, int maxWidth)
     {
         var hidden = false;
         try
@@ -35,7 +39,7 @@ internal static class ScreenGrabber
                 _ = DwmFlush();
             }
 
-            return CaptureCore();
+            return CaptureCore(maxWidth);
         }
         finally
         {
@@ -46,7 +50,7 @@ internal static class ScreenGrabber
         }
     }
 
-    private static byte[] CaptureCore()
+    private static byte[] CaptureCore(int maxWidth)
     {
         var x = GetSystemMetrics(SmXVirtualScreen);
         var y = GetSystemMetrics(SmYVirtualScreen);
@@ -68,10 +72,10 @@ internal static class ScreenGrabber
             Bitmap final = captured;
             try
             {
-                if (captured.Width > MaxWidth)
+                if (captured.Width > maxWidth)
                 {
-                    var scaledHeight = Math.Max(1, (int)Math.Round(captured.Height * (double)MaxWidth / captured.Width));
-                    final = new Bitmap(captured, MaxWidth, scaledHeight);
+                    var scaledHeight = Math.Max(1, (int)Math.Round(captured.Height * (double)maxWidth / captured.Width));
+                    final = new Bitmap(captured, maxWidth, scaledHeight);
                 }
 
                 var codec = ImageCodecInfo.GetImageEncoders().FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid)
