@@ -35,7 +35,7 @@ Privacy tools are only meaningful against a stated adversary. Here is the honest
 | Threat | How |
 | --- | --- |
 | Screenshots, screen recorders, screen sharing (Zoom/Teams/Meet/OBS) | `WDA_EXCLUDEFROMCAPTURE` — the compositor omits the overlay from captured frames |
-| Third-party servers holding your messages | There is no server but your own PC; the process makes zero outbound connections |
+| Third-party servers holding your messages | There is no server but your own PC; the relay process makes zero outbound connections. The optional AI tab in the overlay calls Google's Gemini API, but only when you send it a prompt |
 | Message history on disk | Messages are held in memory only, capped at the last 200, never written to disk |
 | Log files leaking content | All logging providers are removed. Only crash text is ever written to disk |
 | The window showing up in the taskbar or Alt+Tab | `WS_EX_TOOLWINDOW`, `ShowInTaskbar="False"` |
@@ -47,6 +47,7 @@ Privacy tools are only meaningful against a stated adversary. Here is the honest
 | Threat | Why |
 | --- | --- |
 | **Anyone sniffing your LAN** | **Traffic is plaintext HTTP/WebSocket. No TLS. A packet capture on the same network reveals every message and the pairing code itself.** This is the single biggest limitation — see [Limitations](#limitations) |
+| **Anything you send from the AI tab** | **Prompts and screenshots are delivered to Google's Gemini API over HTTPS. The AI conversation never enters the phone relay or its history, and the relay still makes zero outbound connections — but what you deliberately ask Gemini is between you and Google** |
 | Malware, keyloggers or a screen-scraping RAT on the PC | Display affinity is a compositor feature, not a sandbox. Code running on your machine can read the window's contents from process memory |
 | A phone camera pointed at your monitor | Nothing stops photons |
 | Hardware capture cards and some virtual-display setups | They capture below the compositor. The code falls back to `WDA_MONITOR` where exclusion is unsupported |
@@ -97,11 +98,22 @@ flowchart LR
 
 **`PrivChat.Service`** — a minimal ASP.NET Core app with no controllers and no database. It serves the phone client as one embedded HTML string, relays WebSocket frames between clients, and keeps the last 200 messages in a `ConcurrentQueue`. It runs as a Windows service through a hand-rolled `StartServiceCtrlDispatcher` host, and launches the overlay into the active desktop session with `WTSQueryUserToken` + `CreateProcessAsUser`, because a service in session 0 cannot draw a window for you.
 
-**`PrivChat.Overlay`** — a WPF window that sets `WDA_EXCLUDEFROMCAPTURE` on its own handle, marks itself a tool window so it stays out of the taskbar and Alt+Tab, pins itself topmost, and remembers where you dragged it. It talks to the relay over loopback only.
+**`PrivChat.Overlay`** — a WPF window that sets `WDA_EXCLUDEFROMCAPTURE` on its own handle, marks itself a tool window so it stays out of the taskbar and Alt+Tab, pins itself topmost, and remembers where you dragged it. It re-asserts topmost every 1.5 s, so another app that later claims the topmost band cannot bury it, and it ignores close requests (`WM_CLOSE`) — it only ends via the stop script or a logoff, and while the service runs it respawns within five seconds of being killed. It talks to the relay over loopback only; the optional [AI assist](#ai-assist-optional) tab additionally calls Google's Gemini API when you send it a prompt.
 
 **The phone client** — one `<script>` and one `<style>` in a single HTML string. No framework, no bundler, no CDN, no fonts, no analytics. It is served with `Cache-Control: no-store` so an update is never masked by a cached page.
 
 Roles are asymmetric on purpose: the `overlay` role is accepted only from loopback and needs no code, while the `phone` role comes from the network and must present the pairing code.
+
+---
+
+## AI assist (optional)
+
+The overlay header has a **Chat | AI** toggle. The AI tab asks Gemini questions — with or without a screenshot of your screen — and lives entirely inside the capture-protected window.
+
+- **Setup**: the first time you open the AI tab it asks for a Gemini API key ([free from Google AI Studio](https://aistudio.google.com/apikey)). The key is stored at `%LOCALAPPDATA%\PrivChat\ai-config.json` on your PC only; a `GEMINI_API_KEY` environment variable also works. The model defaults to `gemini-2.5-flash` and can be changed in the same place.
+- **Ask about your screen**: press the 📷 button. The overlay hides for a frame, captures the entire virtual desktop (all monitors) as a JPEG, then comes back without stealing focus. Type your prompt, press Enter, and the image plus prompt are sent to Gemini. Follow-up questions keep the latest screenshot until you take a new one.
+- **The overlay never appears in its own screenshots.** GDI `CopyFromScreen` does not reliably honor `WDA_EXCLUDEFROMCAPTURE`, so the capture path hides this window first. Gemini sees your work, never the private chat or pairing code.
+- **Privacy boundaries**: screenshots and prompts leave the machine to Google over HTTPS — that is the point of the feature, and the only outbound connection PrivChat ever makes. The AI conversation is overlay-only: it is never relayed to the phone, never enters the 200-message history, lives in RAM, and dies with the process. Screenshots are downscaled to at most 1920 px wide, encoded as JPEG, and never written to disk.
 
 ---
 

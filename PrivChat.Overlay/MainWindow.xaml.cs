@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Microsoft.Win32;
 
 namespace PrivChat.Overlay;
 
@@ -19,9 +20,11 @@ public partial class MainWindow : Window
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(2);
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(3) };
     private readonly CancellationTokenSource _shutdown = new();
+    private readonly DispatcherTimer _topmostGuard = new() { Interval = TimeSpan.FromSeconds(1.5) };
     private readonly string _baseUrl;
     private ClientWebSocket? _socket;
     private string _pairCode = "------";
+    private bool _allowClose;
 
     public ObservableCollection<OverlayMessage> Messages { get; } = new();
 
@@ -31,7 +34,26 @@ public partial class MainWindow : Window
         DataContext = this;
         _baseUrl = Args.GetValue(Environment.GetCommandLineArgs(), "--url") ?? "http://127.0.0.1:8787";
         Loaded += MainWindow_Loaded;
-        Closing += (_, _) => _shutdown.Cancel();
+
+        // The overlay refuses casual close requests (WM_CLOSE from other apps): it only
+        // ends via the stop script's process kill, or a logoff/shutdown. While the relay
+        // service runs it respawns within five seconds anyway.
+        Closing += (_, e) =>
+        {
+            if (_allowClose)
+            {
+                _shutdown.Cancel();
+            }
+            else
+            {
+                e.Cancel = true;
+            }
+        };
+        SystemEvents.SessionEnding += (_, _) =>
+        {
+            _allowClose = true;
+            Close();
+        };
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -62,6 +84,13 @@ public partial class MainWindow : Window
         {
             SetWindowDisplayAffinity(hwnd, WdaMonitor);
         }
+
+        // Topmost is "last writer wins": another app that claims the topmost band later
+        // would sit above us forever. Re-assert it periodically so the overlay always
+        // climbs back over any rival topmost window.
+        _topmostGuard.Tick += (_, _) =>
+            SetWindowPos(hwnd, HwndTopmost, 0, 0, 0, 0, SwpNoSize | SwpNoMove | SwpNoActivate | SwpNoOwnerZOrder);
+        _topmostGuard.Start();
     }
 
     private void RestorePlacement()
@@ -221,6 +250,21 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ChatTab_Click(object sender, RoutedEventArgs e) => ShowTab(chat: true);
+
+    private void AiTab_Click(object sender, RoutedEventArgs e) => ShowTab(chat: false);
+
+    private void ShowTab(bool chat)
+    {
+        var active = new SolidColorBrush(Color.FromRgb(11, 127, 104));
+        var inactive = new SolidColorBrush(Color.FromRgb(42, 54, 48));
+        ChatTabButton.Background = chat ? active : inactive;
+        AiTabButton.Background = chat ? inactive : active;
+        MessageScroll.Visibility = chat ? Visibility.Visible : Visibility.Collapsed;
+        ChatInputBar.Visibility = chat ? Visibility.Visible : Visibility.Collapsed;
+        AiSection.Visibility = chat ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private void SetConnected(bool connected)
     {
         Dispatcher.Invoke(() =>
@@ -240,9 +284,12 @@ public partial class MainWindow : Window
     private const int GwlExStyle = -20;
     private const int WsExToolWindow = 0x00000080;
     private const int WsExAppWindow = 0x00040000;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpShowWindow = 0x0040;
     private const uint SwpFrameChanged = 0x0020;
+    private const uint SwpNoOwnerZOrder = 0x0200;
     private const uint WdaMonitor = 0x00000001;
     private const uint WdaExcludeFromCapture = 0x00000011;
     private static readonly IntPtr HwndTopmost = new(-1);

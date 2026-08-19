@@ -1,0 +1,120 @@
+<UserControl x:Class="PrivChat.Overlay.AiSection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="LineBrush" Color="#405149" />
+        <SolidColorBrush x:Key="TextBrush" Color="#F2F8F5" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#A8B8B1" />
+        <SolidColorBrush x:Key="AiBubbleBrush" Color="#3D3560" />
+        <SolidColorBrush x:Key="UserBubbleBrush" Color="#0B7F68" />
+        <SolidColorBrush x:Key="ErrorBubbleBrush" Color="#5A2E2E" />
+        <Style x:Key="AiBorderStyle" TargetType="Border">
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="MaxWidth" Value="280" />
+            <Setter Property="Margin" Value="0,4,44,4" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{StaticResource AiBubbleBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Role}" Value="user">
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+                    <Setter Property="Margin" Value="44,4,0,4" />
+                    <Setter Property="Background" Value="{StaticResource UserBubbleBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Role}" Value="error">
+                    <Setter Property="Background" Value="{StaticResource ErrorBubbleBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="AiToolButton" TargetType="Button">
+            <Setter Property="Background" Value="#2A3630" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </UserControl.Resources>
+
+    <!-- Everything here lives inside the capture-protected overlay window: no dialogs,
+         no popups, nothing that could appear in a screenshot or screen share. -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="12,8,12,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Prompts &amp; screenshots are sent to Google Gemini"
+                       Foreground="{StaticResource MutedBrush}" FontSize="10"
+                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <Button x:Name="EditKeyButton" Grid.Column="1" Content="✎ key" Click="EditKey_Click"
+                    FontSize="10" Padding="8,3" Margin="8,0,0,0" Style="{StaticResource AiToolButton}" />
+        </Grid>
+
+        <ScrollViewer x:Name="AiScroll" Grid.Row="1" Padding="12" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Messages}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource AiBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Body}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding TimeText}" Foreground="#C8D6D0" FontSize="10" HorizontalAlignment="Right" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <StackPanel x:Name="KeyPanel" Grid.Row="1" Visibility="Collapsed" Margin="16,10">
+            <TextBlock Text="Gemini API key" Foreground="{StaticResource TextBrush}" FontSize="12" Margin="0,0,0,4" />
+            <TextBox x:Name="KeyBox" MaxLength="120" Padding="8,6" Background="#F4F7F5" Foreground="#111815" BorderThickness="0" />
+            <TextBlock Text="Model" Foreground="{StaticResource TextBrush}" FontSize="12" Margin="0,10,0,4" />
+            <TextBox x:Name="ModelBox" MaxLength="60" Padding="8,6" Background="#F4F7F5" Foreground="#111815" BorderThickness="0" />
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                <Button Content="Save" Click="SaveKey_Click"
+                        Padding="16,6" Background="#0B7F68" Foreground="White" BorderThickness="0" Cursor="Hand" />
+                <Button x:Name="CancelKeyButton" Content="Cancel" Click="CancelKey_Click"
+                        Padding="16,6" Margin="8,0,0,0" Style="{StaticResource AiToolButton}" Visibility="Collapsed" />
+            </StackPanel>
+            <TextBlock x:Name="KeyError" Foreground="#E0A0A0" FontSize="11" Margin="0,8,0,0"
+                       TextWrapping="Wrap" Visibility="Collapsed" />
+            <TextBlock Text="Free key: aistudio.google.com/apikey — stored only on this PC"
+                       Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,10,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <TextBlock x:Name="BusyText" Grid.Row="2" Text="Gemini is thinking…" FontStyle="Italic"
+                   Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="12,0,12,4" Visibility="Collapsed" />
+
+        <Border x:Name="AttachmentStrip" Grid.Row="3" Margin="12,0,12,4" Background="#2A3630"
+                CornerRadius="6" Padding="6" HorizontalAlignment="Left" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal">
+                <Image x:Name="Thumbnail" Height="56" Stretch="Uniform" />
+                <Button Content="×" Click="RemoveAttachment_Click" FontSize="14" Background="Transparent"
+                        Foreground="{StaticResource MutedBrush}" BorderThickness="0" Margin="6,0,0,0" Cursor="Hand" />
+            </StackPanel>
+        </Border>
+
+        <Grid x:Name="InputBar" Grid.Row="4" Margin="12,0,12,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="42" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="CameraButton" Grid.Column="0" Content="📷" Click="Camera_Click" FontSize="15"
+                    Width="38" Margin="0,0,8,0" Style="{StaticResource AiToolButton}" />
+            <TextBox x:Name="PromptBox" Grid.Column="1" MinHeight="38" MaxLength="4000"
+                     VerticalContentAlignment="Center" Padding="12,0" KeyDown="PromptBox_KeyDown"
+                     Background="#F4F7F5" Foreground="#111815" BorderThickness="0" />
+            <Button x:Name="SendButton" Grid.Column="3" Content=">" Click="Send_Click" FontSize="18" FontWeight="Bold"
+                    Background="#0B7F68" Foreground="White" BorderThickness="0" Cursor="Hand" />
+        </Grid>
+    </Grid>
+</UserControl>

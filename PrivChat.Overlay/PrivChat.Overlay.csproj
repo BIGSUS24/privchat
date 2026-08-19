@@ -6,6 +6,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Brings in System.Drawing (GDI) for screen capture without any NuGet package. -->
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
+
+  <!-- WinForms injects global usings that collide with WPF type names (Application,
+       UserControl, KeyEventArgs, Color). Drop them; ScreenGrabber imports System.Drawing
+       explicitly. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
 
 </Project>

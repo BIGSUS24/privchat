@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PrivChat.Overlay"
         mc:Ignorable="d"
         Title="PrivChat Overlay"
         Width="360"
@@ -38,8 +39,15 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="TabButtonStyle" TargetType="Button">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#2A3630" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
     </Window.Resources>
-
     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="8">
         <Grid>
             <Grid.RowDefinitions>
@@ -50,34 +58,46 @@
 
             <Border Grid.Row="0" Padding="14,12" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock Text="PrivChat" Foreground="{StaticResource TextBrush}" FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock x:Name="PairText" Text="Starting local relay" Foreground="{StaticResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
-                    </StackPanel>
-                    <Ellipse x:Name="StatusDot" Grid.Column="1" Width="10" Height="10" Fill="#9BA8A1" VerticalAlignment="Center" />
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="PrivChat" Foreground="{StaticResource TextBrush}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Button x:Name="ChatTabButton" Content="Chat" Click="ChatTab_Click" Margin="0,0,4,0" Background="#0B7F68" Style="{StaticResource TabButtonStyle}" />
+                            <Button x:Name="AiTabButton" Content="AI" Click="AiTab_Click" Background="#2A3630" Style="{StaticResource TabButtonStyle}" />
+                        </StackPanel>
+                        <Ellipse x:Name="StatusDot" Grid.Column="2" Width="10" Height="10" Fill="#9BA8A1" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock x:Name="PairText" Grid.Row="1" Text="Starting local relay" Foreground="{StaticResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
                 </Grid>
             </Border>
 
-            <ScrollViewer x:Name="MessageScroll" Grid.Row="1" Padding="12" VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding Messages}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Style="{StaticResource BubbleBorderStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Body}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding TimeText}" Foreground="#C8D6D0" FontSize="10" HorizontalAlignment="Right" Margin="0,4,0,0" />
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+            <Grid Grid.Row="1">
+                <ScrollViewer x:Name="MessageScroll" Padding="12" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Messages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource BubbleBorderStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Body}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding TimeText}" Foreground="#C8D6D0" FontSize="10" HorizontalAlignment="Right" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <local:AiSection x:Name="AiSection" Visibility="Collapsed" />
+            </Grid>
 
-            <Border Grid.Row="2" Padding="10" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0">
+            <Border x:Name="ChatInputBar" Grid.Row="2" Padding="10" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
