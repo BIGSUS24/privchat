@@ -58,13 +58,15 @@ app.Map("/ws", async context =>
     }
 
     var role = context.Request.Query["role"].ToString();
-    if (role is not ("phone" or "overlay"))
+    if (role is not ("phone" or "overlay" or "peer"))
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
         return;
     }
 
-    if (role == "phone" && !chat.AuthorizePhone(context))
+    // Phones and LAN PC peers both authenticate with the pair code shown on the
+    // overlay; overlays stay loopback-only.
+    if (role is "phone" or "peer" && !chat.AuthorizePhone(context))
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         return;
@@ -76,8 +78,18 @@ app.Map("/ws", async context =>
         return;
     }
 
+    // A peer's messages carry its machine name so both overlays can tell senders
+    // apart; bounded and stripped of everything but letters/digits.
+    var senderLabel = role;
+    if (role == "peer")
+    {
+        var raw = context.Request.Query["name"].ToString();
+        var clean = new string(raw.Where(char.IsLetterOrDigit).Take(24).ToArray());
+        senderLabel = clean.Length == 0 ? "pc-peer" : clean;
+    }
+
     using var socket = await context.WebSockets.AcceptWebSocketAsync();
-    await chat.AcceptAsync(socket, role, context.RequestAborted);
+    await chat.AcceptAsync(socket, role, senderLabel, context.RequestAborted);
 });
 
 async Task RunHostAsync(CancellationToken cancellationToken)
@@ -88,6 +100,10 @@ async Task RunHostAsync(CancellationToken cancellationToken)
     {
         _ = Task.Run(() => OverlayLauncher.MonitorAsync(options, cancellationToken), cancellationToken);
     }
+
+    // LAN room discovery: announce this machine's relay so other PrivChat overlays
+    // can list it. Presence only — never the pair code.
+    _ = Task.Run(() => RoomBeacon.LoopAsync(options.Port, cancellationToken), cancellationToken);
 
     await serverTask;
 }
@@ -200,9 +216,9 @@ internal sealed class ChatHub(string pairCode)
         }
     }
 
-    public async Task AcceptAsync(WebSocket socket, string role, CancellationToken cancellationToken)
+    public async Task AcceptAsync(WebSocket socket, string role, string senderLabel, CancellationToken cancellationToken)
     {
-        var connection = new ClientConnection(Guid.NewGuid(), role, socket);
+        var connection = new ClientConnection(Guid.NewGuid(), role, senderLabel, socket);
         _clients[connection.Id] = connection;
 
         try
@@ -258,8 +274,9 @@ internal sealed class ChatHub(string pairCode)
                 text = text[..4000];
             }
 
-            // The wire protocol labels senders "pc"/"phone"; the overlay is the PC side.
-            var sender = connection.Role == "overlay" ? "pc" : connection.Role;
+            // The wire protocol labels senders "pc"/"phone"; the overlay is the PC side
+            // and LAN peers carry their machine name.
+            var sender = connection.Role == "overlay" ? "pc" : connection.SenderLabel;
             var message = new ChatMessage(Guid.NewGuid(), sender, text, DateTimeOffset.UtcNow);
             _messages.Enqueue(message);
             while (_messages.Count > 200)
@@ -293,7 +310,7 @@ internal sealed class ChatHub(string pairCode)
 
 internal sealed record ChatMessage(Guid Id, string Sender, string Body, DateTimeOffset SentAt);
 
-internal sealed record ClientConnection(Guid Id, string Role, WebSocket Socket)
+internal sealed record ClientConnection(Guid Id, string Role, string SenderLabel, WebSocket Socket)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SemaphoreSlim _sendLock = new(1, 1);
@@ -316,9 +333,7 @@ internal sealed record ClientConnection(Guid Id, string Role, WebSocket Socket)
 internal static class NetworkInfo
 {
     public static bool IsLoopback(IPAddress? address) =>
-        address is not null && (IPAddress.IsLoopback(address) || address.Equals(IPAddress.IPv6Loopback));
-
-    public static IReadOnlyList<string> GetPhoneUrls(int port)
+        address is not null && (IPAddress.IsLoopback(address) || address.Equals(IPAddress.IPv6Loopback));    public static IReadOnlyList<string> GetPhoneUrls(int port)
     {
         var urls = new List<string>();
         foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
@@ -340,6 +355,54 @@ internal static class NetworkInfo
         }
 
         return urls.Distinct().Order(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+}
+
+// LAN presence beacon: a tiny UDP broadcast so other PrivChat instances on the same
+// network can list this machine as a joinable room. Payload carries the machine name
+// and relay port only — the pair code is never broadcast.
+internal static class RoomBeacon
+{
+    private const int BeaconPort = 50508;
+    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(3);
+
+    public static async Task LoopAsync(int port, CancellationToken cancellationToken)
+    {
+        var payload = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            app = "privchat",
+            machine = Environment.MachineName,
+            port
+        });
+
+        using var udp = new UdpClient();
+        udp.EnableBroadcast = true;
+        var broadcast = new IPEndPoint(IPAddress.Broadcast, BeaconPort);
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await udp.SendAsync(payload, broadcast, cancellationToken);
+            }
+            catch (SocketException)
+            {
+                // No network / firewall noise: keep announcing on the next tick.
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(Interval, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
     }
 }
 

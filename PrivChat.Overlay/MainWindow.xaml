@@ -56,7 +56,7 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Padding="14,12" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+            <Border Grid.Row="0" Padding="14,12" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="Header_MouseLeftButtonDown" MouseMove="Header_MouseMove" MouseLeftButtonUp="Header_MouseLeftButtonUp" LostMouseCapture="Header_LostMouseCapture">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -72,7 +72,8 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
                             <Button x:Name="ChatTabButton" Content="Chat" Click="ChatTab_Click" Margin="0,0,4,0" Background="#0B7F68" Style="{StaticResource TabButtonStyle}" />
                             <Button x:Name="AiTabButton" Content="AI" Click="AiTab_Click" Margin="0,0,4,0" Background="#2A3630" Style="{StaticResource TabButtonStyle}" />
-                            <Button x:Name="LlmTabButton" Content="LLM" Click="LlmTab_Click" Background="#2A3630" Style="{StaticResource TabButtonStyle}" />
+                            <Button x:Name="LlmTabButton" Content="LLM" Click="LlmTab_Click" Margin="0,0,4,0" Background="#2A3630" Style="{StaticResource TabButtonStyle}" />
+                            <Button x:Name="LanTabButton" Content="LAN" Click="LanTab_Click" Background="#2A3630" Style="{StaticResource TabButtonStyle}" />
                         </StackPanel>
                         <Ellipse x:Name="StatusDot" Grid.Column="2" Width="10" Height="10" Fill="#9BA8A1" VerticalAlignment="Center" />
                     </Grid>
@@ -97,6 +98,7 @@
                 </ScrollViewer>
                 <local:AiSection x:Name="AiSection" Visibility="Collapsed" />
                 <local:LlmSection x:Name="LlmSection" Visibility="Collapsed" />
+                <local:LanSection x:Name="LanSection" Visibility="Collapsed" />
             </Grid>
 
             <Border x:Name="ChatInputBar" Grid.Row="2" Padding="10" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0">

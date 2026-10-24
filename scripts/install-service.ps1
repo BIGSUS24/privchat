@@ -43,6 +43,8 @@ if ($OpenFirewall) {
     $ruleName = "PrivChat Local Messaging"
     Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule
     New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port -Profile Private | Out-Host
+    # LAN room discovery beacons arrive as UDP broadcasts on this port.
+    New-NetFirewallRule -DisplayName "$ruleName Discovery" -Direction Inbound -Action Allow -Protocol UDP -LocalPort 50508 -Profile Private | Out-Host
 }
 
 Start-Service -Name PrivChatLocal
